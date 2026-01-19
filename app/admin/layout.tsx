@@ -6,13 +6,13 @@ import {
     LayoutDashboard,
     Users,
     Activity,
-    Settings,
     LogOut,
     Droplet
 } from "lucide-react";
+import axios from "axios";
 import { useAdminStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useToast } from "@/lib/toast";
 
 const sidebarItems = [
     {
@@ -44,21 +44,18 @@ export default function AdminLayout({
 }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { isAuthenticated, logout } = useAdminStore();
+    const { logout } = useAdminStore();
+    const toast = useToast();
 
-    // Protect the route
-    useEffect(() => {
-        // Also check persistence if store is empty but localstorage has token
-        const localToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-        if (!isAuthenticated && !localToken) {
+    const handleLogout = async () => {
+        try {
+            await axios.post('/api/auth/logout');
+            logout();
+            toast.success("Successfully logged out");
             router.push("/auth/login");
+        } catch (error) {
+            toast.error("Failed to logout");
         }
-    }, [isAuthenticated, router]);
-
-    const handleLogout = () => {
-        logout();
-        if (typeof window !== 'undefined') localStorage.removeItem('admin_token');
-        router.push("/auth/login");
     };
 
     return (
