@@ -1,25 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
     Plus,
     Search,
-    MoreHorizontal,
-    Link as LinkIcon,
+    LinkIcon,
     Trash2,
     CheckCircle,
     XCircle,
-    Loader2
+    Loader2,
+    Users as UsersIcon
 } from "lucide-react";
 import { adminApi } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
+import { useToast } from "@/lib/toast";
+import type { Meter } from "@/types/api";
+
+const createMeterSchema = z.object({
+    serial_id: z.string().min(3, "Serial ID must be at least 3 characters"),
+    device_id: z.string().optional(),
+});
+
+const linkDeviceSchema = z.object({
+    dev_eui: z.string().min(1, "Device EUI is required"),
+});
 
 export default function MetersPage() {
-    const [meters, setMeters] = useState<any[]>([]);
+    const [meters, setMeters] = useState<Meter[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [creating, setCreating] = useState(false);
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [selectedMeter, setSelectedMeter] = useState<Meter | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const toast = useToast();
+
+    const createForm = useForm<z.infer<typeof createMeterSchema>>({
+        resolver: zodResolver(createMeterSchema),
+        defaultValues: {
+            serial_id: "",
+            device_id: "",
+        },
+    });
+
+    const linkForm = useForm<z.infer<typeof linkDeviceSchema>>({
+        resolver: zodResolver(linkDeviceSchema),
+        defaultValues: {
+            dev_eui: "",
+        },
+    });
 
     useEffect(() => {
         loadMeters();
@@ -31,50 +66,59 @@ export default function MetersPage() {
             const res = await adminApi.getMeters();
             setMeters(res.data);
         } catch (error) {
-            console.error(error);
+            toast.error("Failed to load meters");
         } finally {
             setLoading(false);
         }
     }
 
-    async function handleCreateMeter() {
-        // For MVP, simple creation with defaults or random serials if backend supports it.
-        // The schema MeterCreate requires serial_id and device_id.
-        // We might need a modal form. For now, let's just use window.prompt for a quick test or mock it.
-        const serial = window.prompt("Enter Serial ID:");
-        if (!serial) return;
-        const deviceId = window.prompt("Enter Device ID (Optional, for reference):") || `DEV-${Math.floor(Math.random() * 10000)}`;
-
-        setCreating(true);
+    async function handleCreateMeter(values: z.infer<typeof createMeterSchema>) {
+        setSubmitting(true);
         try {
-            await adminApi.createMeter({ serial_id: serial, device_id: deviceId });
+            await adminApi.createMeter(values);
+            toast.success("Meter created successfully");
+            setCreateDialogOpen(false);
+            createForm.reset();
             await loadMeters();
-        } catch (err) {
-            alert('Failed to create meter');
+        } catch (error) {
+            toast.error("Failed to create meter");
         } finally {
-            setCreating(false);
+            setSubmitting(false);
         }
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm("Are you sure?")) return;
+    async function handleLinkDevice(values: z.infer<typeof linkDeviceSchema>) {
+        if (!selectedMeter) return;
+
+        setSubmitting(true);
         try {
-            await adminApi.deleteMeter(id);
-            setMeters(meters.filter(m => m.meter_id !== id));
-        } catch (err) {
-            alert('Failed to delete');
+            await adminApi.linkDevice(selectedMeter.meter_id, values.dev_eui);
+            toast.success("Device linked successfully");
+            setLinkDialogOpen(false);
+            linkForm.reset();
+            setSelectedMeter(null);
+            await loadMeters();
+        } catch (error) {
+            toast.error("Failed to link device");
+        } finally {
+            setSubmitting(false);
         }
     }
 
-    async function handleLinkDevice(id: string) {
-        const devEui = window.prompt("Enter LoRa Device EUI:");
-        if (!devEui) return;
+    async function handleDelete() {
+        if (!selectedMeter) return;
+
+        setSubmitting(true);
         try {
-            await adminApi.linkDevice(id, devEui);
-            alert("Linked successfully!");
-            loadMeters(); // Refresh to show attributed state if changed
-        } catch (err) {
-            alert("Failed to link device.");
+            await adminApi.deleteMeter(selectedMeter.meter_id);
+            toast.success("Meter deleted successfully");
+            setDeleteDialogOpen(false);
+            setSelectedMeter(null);
+            setMeters(meters.filter(m => m.meter_id !== selectedMeter.meter_id));
+        } catch (error) {
+            toast.error("Failed to delete meter");
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -90,8 +134,8 @@ export default function MetersPage() {
                     <h2 className="text-3xl font-bold tracking-tight text-slate-900">Meters</h2>
                     <p className="text-slate-500">Manage water meters and assignments.</p>
                 </div>
-                <Button onClick={handleCreateMeter} disabled={creating}>
-                    {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Meter
                 </Button>
             </div>
@@ -121,7 +165,9 @@ export default function MetersPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">Loading...</td></tr>
+                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                            </td></tr>
                         ) : filteredMeters.length === 0 ? (
                             <tr><td colSpan={5} className="p-8 text-center text-slate-500">No meters found.</td></tr>
                         ) : (
@@ -129,13 +175,13 @@ export default function MetersPage() {
                                 <tr key={meter.meter_id} className="hover:bg-slate-50/50">
                                     <td className="px-4 py-3 font-medium text-slate-900">
                                         <div>{meter.serial_id}</div>
-                                        <div className="text-xs text-slate-500">{meter.device_id}</div>
+                                        <div className="text-xs text-slate-500">{meter.device_id || '-'}</div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">
                                         {meter.User ? (
                                             <span className="flex items-center gap-1">
                                                 <UsersIcon className="h-3 w-3" />
-                                                {meter.User.pseudo || meter.User.user_phone}
+                                                {meter.User.user_pseudo || meter.User.user_phone}
                                             </span>
                                         ) : (
                                             <span className="text-slate-400 italic">Unassigned</span>
@@ -161,10 +207,26 @@ export default function MetersPage() {
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button variant="ghost" size="icon" onClick={() => handleLinkDevice(meter.meter_id)} title="Link Physical Device">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    setSelectedMeter(meter);
+                                                    setLinkDialogOpen(true);
+                                                }}
+                                                title="Link Physical Device"
+                                            >
                                                 <LinkIcon className="h-4 w-4 text-blue-500" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(meter.meter_id)} title="Delete Meter">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    setSelectedMeter(meter);
+                                                    setDeleteDialogOpen(true);
+                                                }}
+                                                title="Delete Meter"
+                                            >
                                                 <Trash2 className="h-4 w-4 text-red-500" />
                                             </Button>
                                         </div>
@@ -175,10 +237,108 @@ export default function MetersPage() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Create Meter Dialog */}
+            <Dialog
+                open={createDialogOpen}
+                onClose={() => !submitting && setCreateDialogOpen(false)}
+                title="Add New Meter"
+                description="Create a new water meter in the system"
+            >
+                <form onSubmit={createForm.handleSubmit(handleCreateMeter)} className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-900">
+                            Serial ID
+                        </label>
+                        <Input
+                            placeholder="e.g. SN-001234"
+                            {...createForm.register("serial_id")}
+                            disabled={submitting}
+                        />
+                        {createForm.formState.errors.serial_id && (
+                            <p className="text-sm text-red-500">
+                                {createForm.formState.errors.serial_id.message}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-900">
+                            Device ID <span className="text-slate-400">(Optional)</span>
+                        </label>
+                        <Input
+                            placeholder="e.g. DEV-5678"
+                            {...createForm.register("device_id")}
+                            disabled={submitting}
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setCreateDialogOpen(false)}
+                            disabled={submitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" loading={submitting}>
+                            Create Meter
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+
+            {/* Link Device Dialog */}
+            <Dialog
+                open={linkDialogOpen}
+                onClose={() => !submitting && setLinkDialogOpen(false)}
+                title="Link Physical Device"
+                description={`Link LoRa device to meter ${selectedMeter?.serial_id || ''}`}
+            >
+                <form onSubmit={linkForm.handleSubmit(handleLinkDevice)} className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-900">
+                            Device EUI
+                        </label>
+                        <Input
+                            placeholder="Enter LoRa Device EUI"
+                            {...linkForm.register("dev_eui")}
+                            disabled={submitting}
+                        />
+                        {linkForm.formState.errors.dev_eui && (
+                            <p className="text-sm text-red-500">
+                                {linkForm.formState.errors.dev_eui.message}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setLinkDialogOpen(false)}
+                            disabled={submitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" loading={submitting}>
+                            Link Device
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+                onConfirm={handleDelete}
+                title="Delete Meter"
+                description={`Are you sure you want to delete meter ${selectedMeter?.serial_id || ''}? This action cannot be undone.`}
+                confirmText="Delete"
+                loading={submitting}
+            />
         </div>
     );
-}
-
-function UsersIcon(props: any) {
-    return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
 }

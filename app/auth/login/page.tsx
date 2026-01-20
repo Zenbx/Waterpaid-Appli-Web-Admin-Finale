@@ -6,11 +6,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Droplet } from "lucide-react";
+import axios from "axios";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { authApi } from "@/lib/client";
 import { useAdminStore } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 
 const formSchema = z.object({
     phone: z.string().min(1, "Phone number is required"),
@@ -20,8 +21,8 @@ const formSchema = z.object({
 export default function LoginPage() {
     const router = useRouter();
     const login = useAdminStore((state) => state.login);
+    const toast = useToast();
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState("");
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -33,28 +34,23 @@ export default function LoginPage() {
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true);
-        setError("");
 
         try {
-            // API expects standard JSON: { phone, password }
-            const response = await authApi.login({
+            await axios.post('/api/auth/login', {
                 phone: values.phone,
                 password: values.password
             });
 
-            // Response expected: { access_token, token_type }
-            const { access_token } = response.data;
-
-            login(access_token);
-
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('admin_token', access_token);
-            }
-
+            login();
+            toast.success("Successfully logged in");
             router.push("/admin");
-        } catch (err: any) {
-            console.error(err);
-            setError("Invalid credentials. Please try again.");
+        } catch (err) {
+            if (axios.isAxiosError(err)) {
+                const message = err.response?.data?.detail || "Invalid credentials";
+                toast.error(message);
+            } else {
+                toast.error("An unexpected error occurred");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -108,8 +104,6 @@ export default function LoginPage() {
                             </p>
                         )}
                     </div>
-
-                    {error && <div className="text-sm text-red-500 font-medium text-center">{error}</div>}
 
                     <Button type="submit" className="w-full" loading={isLoading}>
                         Sign In

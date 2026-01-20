@@ -1,65 +1,87 @@
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import type {
+    Meter,
+    CreateMeterRequest,
+    UpdateMeterRequest,
+    User,
+    Transaction,
+    ReportParams,
+    RefillMeterRequest,
+} from '@/types/api';
 
-// Replace with your actual API URL
-const BASE_URL = 'https://waterpaid-api.onrender.com';
+// Utilisation de la variable d'environnement
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://waterpaid-api.onrender.com';
 
-const client = axios.create({
+// Client Axios pour les requêtes depuis le navigateur
+const browserClient: AxiosInstance = axios.create({
+    baseURL: '/api', // Proxy via les routes API Next.js
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    withCredentials: true, // Important pour envoyer les cookies HttpOnly
+});
+
+// Client Axios pour les requêtes serveur-side
+export const serverClient: AxiosInstance = axios.create({
     baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Helper to get cookie by name (simple version for client-side)
-const getCookie = (name: string) => {
-    if (typeof document === 'undefined') return null;
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift();
-    return null;
-};
-
-// Interceptor to add token to requests
-client.interceptors.request.use(async (config) => {
-    // In Next.js, we might store token in cookies or localStorage
-    // Using localStorage for parity with Mobile App logic for now, 
-    // unless user prefers HttpOnly cookies (more secure).
-    // Given the prompt asked for "same style/logic", localStorage/Cookies accessible via JS is easiest to port.
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('admin_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+// Intercepteur pour gérer les erreurs de manière uniforme
+browserClient.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError) => {
+        // Redirection automatique vers login si non authentifié
+        if (error.response?.status === 401 && typeof window !== 'undefined') {
+            window.location.href = '/auth/login';
         }
+        return Promise.reject(error);
     }
-    return config;
-});
+);
 
-// Types based on API schemas
-export interface AdminLoginRequest {
-    username: string; // The API uses OAuth2PasswordRequestForm usually, but let's check auth.py
-    password: string;
-}
-
-export const authApi = {
-    login: (data: any) => client.post('/auth/login', data),
-};
+// ========================================
+// API Admin - Requêtes typées strictement
+// ========================================
 
 export const adminApi = {
-    getMeters: () => client.get('/a/meters'),
-    createMeter: (data: any) => client.post('/a/meters', data),
-    getMeter: (id: string) => client.get(`/a/meters/${id}`),
-    updateMeter: (id: string, data: any) => client.put(`/a/meters/${id}`, data),
-    deleteMeter: (id: string) => client.delete(`/a/meters/${id}`),
+    // Meters
+    getMeters: () => browserClient.get<Meter[]>('/admin/meters'),
 
-    linkDevice: (id: string, dev_eui: string) => client.post(`/a/meters/${id}/link-device`, null, { params: { dev_eui } }),
+    createMeter: (data: CreateMeterRequest) =>
+        browserClient.post<Meter>('/admin/meters', data),
 
-    getUsers: (skip = 0, limit = 100) => client.get('/a/users', { params: { skip, limit } }),
+    getMeter: (id: string) =>
+        browserClient.get<Meter>(`/admin/meters/${id}`),
 
-    getReports: (params: any) => client.get('/a/reports', { params }),
-    createReport: (data: any) => client.post('/a/reports', data),
+    updateMeter: (id: string, data: UpdateMeterRequest) =>
+        browserClient.put<Meter>(`/admin/meters/${id}`, data),
 
-    // Refill Meter by Admin
-    refillMeter: (id_meter: string, data: any) => client.post(`/a/refill-meters/${id_meter}`, data),
+    deleteMeter: (id: string) =>
+        browserClient.delete<void>(`/admin/meters/${id}`),
+
+    linkDevice: (id: string, dev_eui: string) =>
+        browserClient.post<void>(`/admin/meters/${id}/link-device`, { dev_eui }),
+
+    // Users
+    getUsers: (skip = 0, limit = 100) =>
+        browserClient.get<User[]>('/admin/users', { params: { skip, limit } }),
+
+    // Reports
+    getReports: (params: ReportParams) =>
+        browserClient.get<any>('/admin/reports', { params }),
+
+    createReport: (data: any) =>
+        browserClient.post<any>('/admin/reports', data),
+
+    // Refill Meter
+    refillMeter: (id_meter: string, data: RefillMeterRequest) =>
+        browserClient.post<Transaction>(`/admin/refill-meters/${id_meter}`, data),
+
+    // History
+    getTransactionHistory: (params: { user_id?: string; meter_id?: string }) =>
+        browserClient.get<Transaction[]>('/admin/transactions', { params }),
 };
 
-export default client;
+export default browserClient;
