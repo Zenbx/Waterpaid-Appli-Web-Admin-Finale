@@ -43,7 +43,7 @@ export interface User {
 // Meter Types
 // ========================================
 
-export type MeterState = 'ON' | 'OFF';
+export type MeterState = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 
 export interface Meter {
     meter_id: string;

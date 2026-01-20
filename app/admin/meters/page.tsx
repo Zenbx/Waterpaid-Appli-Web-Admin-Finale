@@ -199,7 +199,7 @@ export default function MetersPage() {
                     <div className="h-8 w-[1px] bg-slate-100" />
                     <div className="flex flex-col items-end">
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Active</span>
-                        <span className="text-lg font-bold text-green-600">{meters.filter(m => m.meter_state === 'ON').length}</span>
+                        <span className="text-lg font-bold text-green-600">{meters.filter(m => m.meter_state === 'ACTIVE').length}</span>
                     </div>
                 </div>
             </div>
@@ -277,7 +277,7 @@ export default function MetersPage() {
                                             )}
                                         </td>
                                         <td className="px-8 py-4">
-                                            {meter.meter_state === 'ON' ? (
+                                            {meter.meter_state === 'ACTIVE' ? (
                                                 <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
                                                     FLOWING
