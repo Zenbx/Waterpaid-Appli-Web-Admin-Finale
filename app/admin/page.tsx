@@ -1,213 +1,155 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import {
-    Users,
-    Droplet,
-    Activity,
-    TrendingUp,
-    AlertCircle,
-    FileText
-} from "lucide-react";
+"use client"
+import React from 'react';
+import { DollarSign, Droplets, Activity, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { adminApi } from "@/lib/client";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+// Mock Chart Component (Simple CSS implementation to avoid dependency issues for now)
+const SimpleBarChart = ({ data }: { data: number[] }) => {
+    const max = Math.max(...data);
+    return (
+        <div className="flex items-end justify-between h-32 gap-2 mt-4">
+            {data.map((value, i) => (
+                <div key={i} className="w-full bg-primary/20 rounded-t-sm relative group hover:bg-primary/40 transition-colors" style={{ height: `${(value / max) * 100}%` }}>
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        {value}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({
-        totalUsers: 0,
-        totalMeters: 0,
-        assignedMeters: 0,
-        totalRefills: 0,
-        recentActivity: [] as any[],
+    // In a real app, use SWR or React Query
+    const [stats, setStats] = React.useState({
+        totalRevenue: 0,
+        totalWaterDistributed: 0,
+        activeMeters: 0,
+        totalUsers: 0
     });
-    const [loading, setLoading] = useState(true);
+    const [recentRefills, setRecentRefills] = React.useState<any[]>([]);
 
-    useEffect(() => {
-        async function fetchStats() {
+    React.useEffect(() => {
+        // Mock data fetching or real API calls
+        const fetchData = async () => {
             try {
-                const [metersRes, usersRes] = await Promise.all([
-                    adminApi.getMeters(),
-                    adminApi.getUsers(0, 1)
+                // Fetch real data if APIs are ready, otherwise use mock for UI demo
+                // const users = await adminApi.getUsers();
+                // setStats(...)
+
+                // Demo Data
+                setStats({
+                    totalRevenue: 1250000,
+                    totalWaterDistributed: 450000,
+                    activeMeters: 142,
+                    totalUsers: 89
+                });
+
+                setRecentRefills([
+                    { id: 1, user: "John Doe", amount: 5000, method: "Orange Money", status: "completed", date: "2024-03-10" },
+                    { id: 2, user: "Jane Smith", amount: 2500, method: "MTN MoMo", status: "completed", date: "2024-03-10" },
+                    { id: 3, user: "Alice Brown", amount: 10000, method: "Card", status: "failed", date: "2024-03-09" },
                 ]);
 
-                const meters = metersRes.data;
-                const users = usersRes.data;
-
-                const assigned = meters.filter((m: any) => m.attributed).length;
-
-                setStats({
-                    totalUsers: users.length,
-                    totalMeters: meters.length,
-                    assignedMeters: assigned,
-                    totalRefills: 0,
-                    recentActivity: []
-                });
             } catch (error) {
-                console.error("Failed to fetch dashboard stats", error);
-            } finally {
-                setLoading(false);
+                console.error("Failed to fetch dashboard data", error);
             }
-        }
-
-        fetchStats();
+        };
+        fetchData();
     }, []);
 
-    async function handleGenerateReport() {
-        setLoading(true);
-        try {
-            // Dynamically import jsPDF to avoid SSR issues
-            const jsPDF = (await import("jspdf")).default;
-            const autoTable = (await import("jspdf-autotable")).default;
-
-            const doc = new jsPDF();
-
-            // fetch latest data
-            const [metersRes, usersRes] = await Promise.all([
-                adminApi.getMeters(),
-                adminApi.getUsers(0, 1000)
-            ]);
-            const meters = metersRes.data;
-            const users = usersRes.data;
-
-            // Title
-            doc.setFontSize(20);
-            doc.text("WaterPaid - System Report", 14, 22);
-            doc.setFontSize(11);
-            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-
-            // Dashboard Stats
-            doc.setFontSize(14);
-            doc.text("Overview", 14, 45);
-
-            const assignedCount = meters.filter((m: any) => m.attributed).length;
-            const statsData = [
-                ["Total Users", users.length.toString()],
-                ["Total Meters", meters.length.toString()],
-                ["Assigned Meters", assignedCount.toString()],
-                ["Utilization", `${Math.round((assignedCount / (meters.length || 1)) * 100)}%`]
-            ];
-
-            autoTable(doc, {
-                startY: 50,
-                head: [['Metric', 'Value']],
-                body: statsData,
-                theme: 'striped',
-                headStyles: { fillColor: [15, 23, 42] } // Slate 900
-            });
-
-            // Meters List
-            const finalY = (doc as any).lastAutoTable.finalY || 50;
-            doc.text("Meters Inventory", 14, finalY + 15);
-
-            const metersData = meters.map((m: any) => [
-                m.serial_id,
-                m.device_id || '-',
-                m.attributed ? 'Yes' : 'No',
-                m.meter_state,
-                m.User ? m.User.user_pseudo : '-'
-            ]);
-
-            autoTable(doc, {
-                startY: finalY + 20,
-                head: [['Serial ID', 'Device ID', 'Assigned', 'State', 'User']],
-                body: metersData,
-                theme: 'grid',
-                headStyles: { fillColor: [59, 130, 246] } // Blue 500
-            });
-
-            doc.save(`WaterPaid_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-            alert("Report downloaded successfully!");
-        } catch (error) {
-            console.error(error);
-            alert("Failed to generate PDF.");
-        } finally {
-            setLoading(false);
-        }
-    }
-
     return (
-        <div className="space-y-8">
+        <div className="flex flex-col gap-6 p-6">
             <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h2>
-                    <p className="text-slate-500">Overview of your water management system.</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button onClick={handleGenerateReport} disabled={loading}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generate Report
-                    </Button>
+                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Last updated: Today, 10:42 AM</span>
                 </div>
             </div>
 
+            {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatsCard
-                    title="Total Meters"
-                    value={stats.totalMeters.toString()}
-                    icon={<Droplet className="h-4 w-4 text-slate-500" />}
-                    loading={loading}
+                    title="Total Revenue"
+                    value={`${stats.totalRevenue.toLocaleString()} FCFA`}
+                    icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+                    trend="+20.1% from last month"
                 />
                 <StatsCard
-                    title="Active Users"
+                    title="Water Distributed"
+                    value={`${stats.totalWaterDistributed.toLocaleString()} L`}
+                    icon={<Droplets className="h-4 w-4 text-muted-foreground" />}
+                    trend="+10.5% from last month"
+                />
+                <StatsCard
+                    title="Active Meters"
+                    value={stats.activeMeters.toString()}
+                    icon={<Activity className="h-4 w-4 text-muted-foreground" />}
+                    trend="+5 new this week"
+                />
+                <StatsCard
+                    title="Total Users"
                     value={stats.totalUsers.toString()}
-                    icon={<Users className="h-4 w-4 text-slate-500" />}
-                    loading={loading}
-                />
-                <StatsCard
-                    title="Assigned Meters"
-                    value={stats.assignedMeters.toString()}
-                    description={`${Math.round((stats.assignedMeters / (stats.totalMeters || 1)) * 100)}% utilization`}
-                    icon={<Activity className="h-4 w-4 text-slate-500" />}
-                    loading={loading}
-                />
-                <StatsCard
-                    title="Refills"
-                    value="-"
-                    description="Transaction data"
-                    icon={<TrendingUp className="h-4 w-4 text-slate-500" />}
-                    loading={loading}
+                    icon={<Users className="h-4 w-4 text-muted-foreground" />}
+                    trend="+12 signups"
                 />
             </div>
 
+            {/* Charts & Recent Activity */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <div className="col-span-4 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-                    <h3 className="font-semibold text-slate-900">System Overview</h3>
-                    <div className="mt-4 flex h-[200px] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
-                        <p className="text-sm text-slate-500">Chart / Analytics Placeholder</p>
-                    </div>
-                </div>
-                <div className="col-span-3 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-                    <h3 className="font-semibold text-slate-900">Recent Alerts</h3>
-                    <div className="mt-4 space-y-4">
-                        <div className="flex items-start gap-4 rounded-lg bg-slate-50 p-3">
-                            <AlertCircle className="mt-0.5 h-5 w-5 text-blue-500" />
-                            <div>
-                                <p className="text-sm font-medium text-slate-900">System Normal</p>
-                                <p className="text-xs text-slate-500">All services operational.</p>
-                            </div>
+                <Card className="col-span-4">
+                    <CardHeader>
+                        <CardTitle>Revenue Overview</CardTitle>
+                        <CardDescription>Monthly revenue breakdown for the current year.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pl-2">
+                        <SimpleBarChart data={[4500, 6000, 5500, 7000, 8500, 9000, 8000, 9500, 10000, 11000, 10500, 12000]} />
+                        <div className="flex justify-between mt-2 text-xs text-muted-foreground px-2">
+                            <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+                            <span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
+                <Card className="col-span-3">
+                    <CardHeader>
+                        <CardTitle>Recent Sales</CardTitle>
+                        <CardDescription>You made 265 sales this month.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-8">
+                            {recentRefills.map((refill) => (
+                                <div key={refill.id} className="flex items-center">
+                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <p className="text-xs font-medium leading-none text-primary">{refill.user.charAt(0)}</p>
+                                    </div>
+                                    <div className="ml-4 space-y-1">
+                                        <p className="text-sm font-medium leading-none">{refill.user}</p>
+                                        <p className="text-xs text-muted-foreground">{refill.method}</p>
+                                    </div>
+                                    <div className="ml-auto font-medium">+{refill.amount.toLocaleString()}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
 }
 
-function StatsCard({ title, value, description, icon, loading }: any) {
+function StatsCard({ title, value, icon, trend }: { title: string, value: string, icon: React.ReactNode, trend?: string }) {
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="tracking-tight text-sm font-medium text-slate-500">{title}</h3>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
                 {icon}
-            </div>
-            <div>
-                {loading ? (
-                    <div className="h-8 w-16 animate-pulse rounded bg-slate-100" />
-                ) : (
-                    <div className="text-2xl font-bold text-slate-900">{value}</div>
-                )}
-                {description && <p className="text-xs text-slate-500 mt-1">{description}</p>}
-            </div>
-        </div>
-    )
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{value}</div>
+                {trend && <p className="text-xs text-muted-foreground">{trend}</p>}
+            </CardContent>
+        </Card>
+    );
 }

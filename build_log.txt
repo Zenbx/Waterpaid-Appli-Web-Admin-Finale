@@ -1,0 +1,22 @@
+
+> water-paid-admin@0.1.0 build
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 9.5s
+  Running TypeScript ...
+Failed to compile.
+
+./app/admin/settings/page.tsx:8:10
+Type error: Module '"lucide-react"' has no exported member 'Tooltip'.
+
+[0m [90m  6 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { [33mBadge[39m } [36mfrom[39m [32m'@/components/ui/badge'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { [33mTooltip[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m    |[39m          [31m[1m^[22m[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mSettingsPage[39m() {
+ [90m 11 |[39m     [36mconst[39m { register[33m,[39m handleSubmit } [33m=[39m useForm({[0m
+Next.js build worker exited with code: 1 and signal: null

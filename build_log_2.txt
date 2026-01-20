@@ -1,0 +1,23 @@
+
+> water-paid-admin@0.1.0 build
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 9.0s
+  Running TypeScript ...
+Failed to compile.
+
+./app/auth/login/page.tsx:114:62
+Type error: Type '{ children: string; type: "submit"; className: string; loading: boolean; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLButtonElement>'.
+  Property 'loading' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLButtonElement>'.
+
+[0m [90m 112 |[39m                     {error [33m&&[39m [33m<[39m[33mdiv[39m className[33m=[39m[32m"text-sm text-red-500 font-medium text-center"[39m[33m>[39m{error}[33m<[39m[33m/[39m[33mdiv[39m[33m>[39m}
+ [90m 113 |[39m
+[31m[1m>[22m[39m[90m 114 |[39m                     [33m<[39m[33mButton[39m type[33m=[39m[32m"submit"[39m className[33m=[39m[32m"w-full"[39m loading[33m=[39m{isLoading}[33m>[39m
+ [90m     |[39m                                                              [31m[1m^[22m[39m
+ [90m 115 |[39m                         [33mSign[39m [33mIn[39m
+ [90m 116 |[39m                     [33m<[39m[33m/[39m[33mButton[39m[33m>[39m
+ [90m 117 |[39m                 [33m<[39m[33m/[39m[33mform[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null
