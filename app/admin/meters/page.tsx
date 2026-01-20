@@ -32,7 +32,7 @@ const linkDeviceSchema = z.object({
 });
 
 const directRechargeSchema = z.object({
-    volume_liters: z.coerce.number().min(0.1, "Volume must be greater than 0"),
+    volume_liters: z.number().min(0.1, "Volume must be greater than 0"),
 });
 
 export default function MetersPage() {
@@ -392,7 +392,7 @@ export default function MetersPage() {
                             type="number"
                             step="0.1"
                             placeholder="e.g. 500"
-                            {...rechargeForm.register("volume_liters")}
+                            {...rechargeForm.register("volume_liters", { valueAsNumber: true })}
                             disabled={submitting}
                         />
                         {rechargeForm.formState.errors.volume_liters && (
