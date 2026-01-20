@@ -12,7 +12,8 @@ import {
     CheckCircle,
     XCircle,
     Loader2,
-    Users as UsersIcon
+    Users as UsersIcon,
+    Droplets
 } from "lucide-react";
 import { adminApi } from "@/lib/client";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,17 @@ const linkDeviceSchema = z.object({
     dev_eui: z.string().min(1, "Device EUI is required"),
 });
 
+const directRechargeSchema = z.object({
+    volume_liters: z.coerce.number().min(0.1, "Volume must be greater than 0"),
+});
+
 export default function MetersPage() {
     const [meters, setMeters] = useState<Meter[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+    const [rechargeDialogOpen, setRechargeDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedMeter, setSelectedMeter] = useState<Meter | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -53,6 +59,13 @@ export default function MetersPage() {
         resolver: zodResolver(linkDeviceSchema),
         defaultValues: {
             dev_eui: "",
+        },
+    });
+
+    const rechargeForm = useForm<z.infer<typeof directRechargeSchema>>({
+        resolver: zodResolver(directRechargeSchema),
+        defaultValues: {
+            volume_liters: 0,
         },
     });
 
@@ -100,6 +113,28 @@ export default function MetersPage() {
             await loadMeters();
         } catch (error) {
             toast.error("Failed to link device");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleDirectRecharge(values: z.infer<typeof directRechargeSchema>) {
+        if (!selectedMeter) return;
+
+        setSubmitting(true);
+        try {
+            await adminApi.refillMeter(selectedMeter.meter_id, {
+                amount: 0,
+                volume_liters: values.volume_liters,
+                payment_method: 'CASH'
+            });
+            toast.success(`Direct recharge of ${values.volume_liters}L successful`);
+            setRechargeDialogOpen(false);
+            rechargeForm.reset();
+            setSelectedMeter(null);
+            await loadMeters();
+        } catch (error) {
+            toast.error("Failed to perform direct recharge");
         } finally {
             setSubmitting(false);
         }
@@ -207,6 +242,18 @@ export default function MetersPage() {
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    setSelectedMeter(meter);
+                                                    setRechargeDialogOpen(true);
+                                                    rechargeForm.setValue('volume_liters', 0);
+                                                }}
+                                                title="Direct Volume Recharge"
+                                            >
+                                                <Droplets className="h-4 w-4 text-emerald-500" />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -324,6 +371,48 @@ export default function MetersPage() {
                         </Button>
                         <Button type="submit" loading={submitting}>
                             Link Device
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+
+            {/* Direct Recharge Dialog */}
+            <Dialog
+                open={rechargeDialogOpen}
+                onClose={() => !submitting && setRechargeDialogOpen(false)}
+                title="Direct Volume Recharge"
+                description={`Send water credit to meter ${selectedMeter?.serial_id || ''} without payment.`}
+            >
+                <form onSubmit={rechargeForm.handleSubmit(handleDirectRecharge)} className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-900">
+                            Volume to Credit (Liters)
+                        </label>
+                        <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g. 500"
+                            {...rechargeForm.register("volume_liters")}
+                            disabled={submitting}
+                        />
+                        {rechargeForm.formState.errors.volume_liters && (
+                            <p className="text-sm text-red-500">
+                                {rechargeForm.formState.errors.volume_liters.message}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setRechargeDialogOpen(false)}
+                            disabled={submitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" loading={submitting} variant="default">
+                            Execute Recharge
                         </Button>
                     </div>
                 </form>
