@@ -13,44 +13,63 @@ const logs = [
 
 export default function AuditLogsPage() {
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
-                <p className="text-muted-foreground">Track administrative actions and system events.</p>
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">System Trace</h1>
+                    <p className="text-sm text-slate-500 mt-1">Immutable audit logs of all administrative interactions.</p>
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>System Activity</CardTitle>
-                    <CardDescription>Recent logs from the last 30 days.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Action</TableHead>
-                                <TableHead>User</TableHead>
-                                <TableHead>Details</TableHead>
-                                <TableHead>IP Address</TableHead>
-                                <TableHead>Timestamp</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
+            {/* Content Card */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden min-h-[500px]">
+                <div className="p-8 border-b border-slate-50">
+                    <h2 className="text-lg font-bold text-slate-900">Infrastructure Logs</h2>
+                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">Secure Trace Database • Live</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Event Action</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Identity</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Event Narrative</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Network Origin</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px] text-right">Synchronization</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
                             {logs.map((log) => (
-                                <TableRow key={log.id}>
-                                    <TableCell className="font-medium">{log.action}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">{log.user}</Badge>
-                                    </TableCell>
-                                    <TableCell>{log.details}</TableCell>
-                                    <TableCell className="text-muted-foreground text-xs">{log.ip}</TableCell>
-                                    <TableCell className="text-muted-foreground">{log.date}</TableCell>
-                                </TableRow>
+                                <tr key={log.id} className="group hover:bg-blue-50/20 transition-all">
+                                    <td className="px-8 py-4 font-bold text-slate-900 tracking-tight">
+                                        {log.action}
+                                    </td>
+                                    <td className="px-8 py-4">
+                                        <Badge variant="outline" className="border-slate-200 text-slate-600 bg-slate-50/50 font-bold text-[10px] rounded-lg">
+                                            {log.user.toUpperCase()}
+                                        </Badge>
+                                    </td>
+                                    <td className="px-8 py-4 text-slate-500 text-xs italic">
+                                        "{log.details}"
+                                    </td>
+                                    <td className="px-8 py-4">
+                                        <span className="font-mono text-[10px] text-slate-400 py-1 px-2 bg-slate-50 border border-slate-100 rounded-lg">
+                                            {log.ip}
+                                        </span>
+                                    </td>
+                                    <td className="px-8 py-4 text-right">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                            {log.date}
+                                        </span>
+                                    </td>
+                                </tr>
                             ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 }

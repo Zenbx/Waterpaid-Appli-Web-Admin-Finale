@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
+import { Badge } from "@/components/ui/badge";
 import type { Meter } from "@/types/api";
 
 const createMeterSchema = z.object({
@@ -163,127 +164,182 @@ export default function MetersPage() {
     );
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Page Title & Actions */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Meters</h2>
-                    <p className="text-slate-500">Manage water meters and assignments.</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Meter Management</h1>
+                    <p className="text-sm text-slate-500 mt-1">Monitor, configure and assign water meters to users.</p>
                 </div>
-                <Button onClick={() => setCreateDialogOpen(true)}>
+                <Button
+                    onClick={() => setCreateDialogOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-100 transition-all active:scale-95"
+                >
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Meter
+                    Record New Meter
                 </Button>
             </div>
 
-            <div className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+            {/* Quick Stats / Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div className="relative w-full sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
-                        className="pl-9"
-                        placeholder="Search meters..."
+                        className="pl-10 bg-slate-50 border-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded-xl"
+                        placeholder="Search by Serial or Device EUI..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
+                <div className="flex items-center gap-6 px-2">
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Total Meters</span>
+                        <span className="text-lg font-bold text-slate-900">{meters.length}</span>
+                    </div>
+                    <div className="h-8 w-[1px] bg-slate-100" />
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Active</span>
+                        <span className="text-lg font-bold text-green-600">{meters.filter(m => m.meter_state === 'ON').length}</span>
+                    </div>
+                </div>
             </div>
 
-            <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
-                        <tr>
-                            <th className="px-4 py-3">Serial ID / Device ID</th>
-                            <th className="px-4 py-3">User</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">State</th>
-                            <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">
-                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                            </td></tr>
-                        ) : filteredMeters.length === 0 ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">No meters found.</td></tr>
-                        ) : (
-                            filteredMeters.map(meter => (
-                                <tr key={meter.meter_id} className="hover:bg-slate-50/50">
-                                    <td className="px-4 py-3 font-medium text-slate-900">
-                                        <div>{meter.serial_id}</div>
-                                        <div className="text-xs text-slate-500">{meter.device_id || '-'}</div>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600">
-                                        {meter.User ? (
-                                            <span className="flex items-center gap-1">
-                                                <UsersIcon className="h-3 w-3" />
-                                                {meter.User.user_pseudo || meter.User.user_phone}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 italic">Unassigned</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {meter.attributed ? (
-                                            <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                                Attributed
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center rounded-full bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                                                Free
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {meter.meter_state === 'ON' ? (
-                                            <div className="flex items-center text-green-600"><CheckCircle className="mr-1 h-3 w-3" /> ON</div>
-                                        ) : (
-                                            <div className="flex items-center text-red-600"><XCircle className="mr-1 h-3 w-3" /> OFF</div>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => {
-                                                    setSelectedMeter(meter);
-                                                    setRechargeDialogOpen(true);
-                                                    rechargeForm.setValue('volume_liters', 0);
-                                                }}
-                                                title="Direct Volume Recharge"
-                                            >
-                                                <Droplets className="h-4 w-4 text-emerald-500" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => {
-                                                    setSelectedMeter(meter);
-                                                    setLinkDialogOpen(true);
-                                                }}
-                                                title="Link Physical Device"
-                                            >
-                                                <LinkIcon className="h-4 w-4 text-blue-500" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => {
-                                                    setSelectedMeter(meter);
-                                                    setDeleteDialogOpen(true);
-                                                }}
-                                                title="Delete Meter"
-                                            >
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            </Button>
+            {/* Data Table */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Identification</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Current Owner</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Availability</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Flow Status</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px] text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={5} className="py-20 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                                            <span className="text-slate-400 font-medium">Synchronizing meters...</span>
                                         </div>
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                            ) : filteredMeters.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="py-20 text-center text-slate-400 italic">
+                                        No meters found matching your criteria.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredMeters.map(meter => (
+                                    <tr key={meter.meter_id} className="group hover:bg-blue-50/30 transition-colors">
+                                        <td className="px-8 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-900 tracking-tight">{meter.serial_id}</span>
+                                                <span className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                    {meter.device_id || 'NO DEVICE LINKED'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4 text-slate-600">
+                                            {meter.User ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600 font-bold text-[10px]">
+                                                        {(meter.User.user_pseudo || 'U').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-slate-900 leading-none">
+                                                            {meter.User.user_pseudo || 'User'}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 mt-1">
+                                                            {meter.User.user_phone}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[11px] font-medium text-slate-400 py-1 px-2 bg-slate-50 border border-slate-100 rounded-lg">
+                                                    NOT ASSIGNED
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            {meter.attributed ? (
+                                                <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-50">
+                                                    Attributed
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50/50 hover:bg-amber-50">
+                                                    Inventory
+                                                </Badge>
+                                            )}
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            {meter.meter_state === 'ON' ? (
+                                                <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                                                    FLOWING
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                                                    CLOSED
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-8 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                                    onClick={() => {
+                                                        setSelectedMeter(meter);
+                                                        setRechargeDialogOpen(true);
+                                                        rechargeForm.setValue('volume_liters', 0);
+                                                    }}
+                                                    title="Direct Volume Recharge"
+                                                >
+                                                    <Droplets className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                    onClick={() => {
+                                                        setSelectedMeter(meter);
+                                                        setLinkDialogOpen(true);
+                                                    }}
+                                                    title="Link Physical Device"
+                                                >
+                                                    <LinkIcon className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                    onClick={() => {
+                                                        setSelectedMeter(meter);
+                                                        setDeleteDialogOpen(true);
+                                                    }}
+                                                    title="Delete Meter"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
+            {/* Modals are unchanged but inherit global styles */}
+            {/* ... Modal Code ... */}
 
             {/* Create Meter Dialog */}
             <Dialog
