@@ -5,8 +5,11 @@ import type {
     UpdateMeterRequest,
     User,
     Transaction,
+    Report,
     ReportParams,
+    ReportCreateRequest,
     RefillMeterRequest,
+    MeterTokenResponse,
 } from '@/types/api';
 
 // Utilisation de la variable d'environnement
@@ -61,6 +64,9 @@ export const adminApi = {
     deleteMeter: (id: string) =>
         browserClient.delete<void>(`/admin/meters/${id}`),
 
+    generateMeterToken: (id: string) =>
+        browserClient.post<MeterTokenResponse>(`/admin/meters/${id}/generate-token`),
+
     linkDevice: (id: string, dev_eui: string) =>
         browserClient.post<void>(`/admin/meters/${id}/link-device`, { dev_eui }),
 
@@ -70,10 +76,10 @@ export const adminApi = {
 
     // Reports
     getReports: (params: ReportParams) =>
-        browserClient.get<any>('/admin/reports', { params }),
+        browserClient.get<Report[]>('/admin/reports', { params }),
 
-    createReport: (data: any) =>
-        browserClient.post<any>('/admin/reports', data),
+    createReport: (data: ReportCreateRequest) =>
+        browserClient.post<Report>('/admin/reports', data),
 
     // Refill Meter
     refillMeter: (id_meter: string, data: RefillMeterRequest) =>

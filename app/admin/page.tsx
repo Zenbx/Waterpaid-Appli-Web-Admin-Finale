@@ -8,8 +8,18 @@ import {
     Droplets,
     Wallet,
     BarChart3,
-    History
+    History,
+    FileDown
 } from "lucide-react";
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer
+} from 'recharts';
 import { adminApi } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +41,7 @@ export default function AdminDashboard() {
         totalUsers: 0
     });
     const [recentRefills, setRecentRefills] = React.useState<any[]>([]);
+    const [chartData, setChartData] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
@@ -70,6 +81,21 @@ export default function AdminDashboard() {
                     status: (t.status || t.refill_state || 'unknown').toLowerCase(),
                     date: new Date(t.created_at).toLocaleDateString()
                 })));
+
+                // Aggregate chart data (last 7 days or all history if less)
+                const last7Days: any = {};
+                history.forEach((t: any) => {
+                    const date = new Date(t.created_at).toLocaleDateString();
+                    if (!last7Days[date]) {
+                        last7Days[date] = { date, revenue: 0, water: 0 };
+                    }
+                    if (t.status === 'COMPLETED' || t.status === 'SUCCEEDED') {
+                        last7Days[date].revenue += (t.amount || t.price || 0);
+                        last7Days[date].water += (t.volume_liters || t.volume || 0);
+                    }
+                });
+
+                setChartData(Object.values(last7Days).slice(-7));
 
             } catch (error) {
                 console.error("Failed to fetch dashboard data", error);
@@ -137,7 +163,53 @@ export default function AdminDashboard() {
                             <BarChart3 className="h-5 w-5 text-slate-400" />
                         </div>
                     </div>
-                    <MetricsPlaceholder />
+                    <div className="h-[300px] w-full mt-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorWater" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis
+                                    dataKey="date"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 'bold' }}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 'bold' }}
+                                />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="revenue"
+                                    stroke="#2563eb"
+                                    fillOpacity={1}
+                                    fill="url(#colorRevenue)"
+                                    strokeWidth={3}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="water"
+                                    stroke="#3b82f6"
+                                    fillOpacity={1}
+                                    fill="url(#colorWater)"
+                                    strokeWidth={3}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
                 {/* Recent Refills (Live Data) */}

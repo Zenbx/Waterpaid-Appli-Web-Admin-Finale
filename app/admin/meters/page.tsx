@@ -13,9 +13,15 @@ import {
     XCircle,
     Loader2,
     Users as UsersIcon,
-    Droplets
+    Droplets,
+    Battery,
+    Wifi,
+    Shield,
+    RotateCcw,
+    Eye
 } from "lucide-react";
 import { adminApi } from "@/lib/client";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
@@ -45,6 +51,8 @@ export default function MetersPage() {
     const [rechargeDialogOpen, setRechargeDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedMeter, setSelectedMeter] = useState<Meter | null>(null);
+    const [viewTokenDialogOpen, setViewTokenDialogOpen] = useState(false);
+    const [meterToken, setMeterToken] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const toast = useToast();
 
@@ -158,6 +166,27 @@ export default function MetersPage() {
         }
     }
 
+    async function handleGenerateToken() {
+        if (!selectedMeter) return;
+        setSubmitting(true);
+        try {
+            const res = await adminApi.generateMeterToken(selectedMeter.meter_id);
+            setMeterToken(res.data.token);
+            toast.success("New token generated");
+            await loadMeters();
+        } catch (error) {
+            toast.error("Failed to generate token");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleViewToken(meter: Meter) {
+        setSelectedMeter(meter);
+        setMeterToken(meter.token || null);
+        setViewTokenDialogOpen(true);
+    }
+
     const filteredMeters = meters.filter(m =>
         m.serial_id.toLowerCase().includes(search.toLowerCase()) ||
         (m.device_id && m.device_id.toLowerCase().includes(search.toLowerCase()))
@@ -213,6 +242,7 @@ export default function MetersPage() {
                                 <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Identification</th>
                                 <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Current Owner</th>
                                 <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Availability</th>
+                                <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Node Telemetry</th>
                                 <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">Flow Status</th>
                                 <th className="px-8 py-5 font-semibold text-slate-600 uppercase tracking-wider text-[11px] text-right">Actions</th>
                             </tr>
@@ -277,20 +307,55 @@ export default function MetersPage() {
                                             )}
                                         </td>
                                         <td className="px-8 py-4">
-                                            {meter.meter_state === 'ACTIVE' ? (
-                                                <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                                                    FLOWING
+                                            <div className="flex flex-col gap-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Battery className={cn("h-3 w-3",
+                                                        (meter.battery_level ?? 0) < 20 ? "text-red-500" : "text-slate-400"
+                                                    )} />
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                                        {meter.battery_level ?? '--'}%
+                                                    </span>
                                                 </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                                                    CLOSED
+                                                <div className="flex items-center gap-2">
+                                                    <Wifi className="h-3 w-3 text-slate-400" />
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                                        {meter.rssi ?? '--'} dBm
+                                                    </span>
                                                 </div>
-                                            )}
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex flex-col gap-2">
+                                                {meter.meter_state === 'ACTIVE' ? (
+                                                    <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-black uppercase tracking-tighter">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                                                        OPERATIONAL
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-tighter">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                                                        RESTRICTED
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    <Shield className={cn("h-3 w-3", meter.valve_state === 'open' ? "text-emerald-500" : "text-slate-400")} />
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                                        Valve: {meter.valve_state || 'unknown'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-8 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                    onClick={() => handleViewToken(meter)}
+                                                    title="View Linking Token"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -472,6 +537,59 @@ export default function MetersPage() {
                         </Button>
                     </div>
                 </form>
+            </Dialog>
+
+            {/* Meter Token Dialog */}
+            <Dialog
+                open={viewTokenDialogOpen}
+                onClose={() => !submitting && setViewTokenDialogOpen(false)}
+                title="Meter Linking Token"
+                description={`Access control token for meter ${selectedMeter?.serial_id || ''}. Users need this to link the meter to their account.`}
+            >
+                <div className="space-y-6">
+                    <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Secret Access Token</span>
+                        <div className="text-2xl font-mono font-black text-slate-900 tracking-wider">
+                            {meterToken || 'NO TOKEN ASSIGNED'}
+                        </div>
+                        <Button
+                            variant="link"
+                            className="mt-4 text-blue-600 font-bold uppercase text-[10px] tracking-widest"
+                            onClick={() => {
+                                if (meterToken) {
+                                    navigator.clipboard.writeText(meterToken);
+                                    toast.success("Token copied to clipboard");
+                                }
+                            }}
+                        >
+                            Copy to Clipboard
+                        </Button>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            className="w-full bg-slate-900 text-white hover:bg-slate-800"
+                            onClick={handleGenerateToken}
+                            loading={submitting}
+                        >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Regenerate Token
+                        </Button>
+                        <p className="text-[10px] text-slate-400 text-center font-medium italic">
+                            Generating a new token will invalidate the previous one immediately.
+                        </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100">
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => setViewTokenDialogOpen(false)}
+                        >
+                            Close
+                        </Button>
+                    </div>
+                </div>
             </Dialog>
 
             {/* Delete Confirmation Dialog */}

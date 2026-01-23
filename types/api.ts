@@ -51,6 +51,10 @@ export interface Meter {
     device_id: string | null;
     attributed: boolean;
     meter_state: MeterState;
+    token?: string; // Linking token
+    battery_level?: number;
+    valve_state?: string;
+    rssi?: number;
     User?: {
         user_id: string;
         user_pseudo: string;
@@ -58,6 +62,12 @@ export interface Meter {
     } | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface MeterTokenResponse {
+    meter_id: string;
+    token: string;
+    message: string;
 }
 
 export interface CreateMeterRequest {
@@ -103,9 +113,26 @@ export interface RefillMeterRequest {
 // Report Types
 // ========================================
 
+export type ReportFormat = 'CSV' | 'PDF';
+
+export interface Report {
+    report_id: string;
+    admin_id: string;
+    started_at: string;
+    ended_at: string;
+    format: string;
+    created_at: string;
+}
+
+export interface ReportCreateRequest {
+    started_at: string;
+    ended_at: string;
+    format: ReportFormat;
+}
+
 export interface ReportParams {
+    skip?: number;
+    limit?: number;
     start_date?: string;
     end_date?: string;
-    meter_id?: string;
-    user_id?: string;
 }

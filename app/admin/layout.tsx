@@ -10,7 +10,8 @@ import {
     Droplet,
     Bell,
     FileText,
-    Settings
+    Settings,
+    FileDown
 } from "lucide-react";
 import axios from "axios";
 import { useAdminStore } from "@/lib/store";
@@ -47,6 +48,11 @@ const sidebarItems = [
         title: "Audit Logs",
         href: "/admin/audit-logs",
         icon: FileText,
+    },
+    {
+        title: "Reports",
+        href: "/admin/reports",
+        icon: FileDown,
     },
     {
         title: "Settings",
