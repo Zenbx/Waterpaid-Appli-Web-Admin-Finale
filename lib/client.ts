@@ -87,7 +87,7 @@ export const adminApi = {
 
     // History
     getTransactionHistory: (params: { user_id?: string; meter_id?: string }) =>
-        browserClient.get<Transaction[]>('/admin/transactions', { params }),
+        browserClient.get<Transaction[]>('/admin/histories', { params }),
 };
 
 export default browserClient;

@@ -18,10 +18,35 @@ async function proxyRequest(request: NextRequest, method: string) {
         // Extraire le path depuis l'URL
         const url = new URL(request.url);
         const pathSegments = url.pathname.split('/api/admin/');
-        const apiPath = pathSegments[1] || '';
+        let apiPath = pathSegments[1] || '';
+
+        // --- MAPPAGE DES ROUTES FRONT -> BACK ---
+        // Le front utilise parfois des noms différents des endpoints backend /a/...
+
+        // Remplacement des segments de base
+        const routeMap: Record<string, string> = {
+            'users': 'users',
+            'meters': 'meters',
+            'history': 'histories', // Backend: /a/histories
+            'reports': 'reports',
+            'transactions': 'transactions',
+            'refill-meters': 'refill-meters'
+        };
+
+        const segments = apiPath.split('/');
+        if (segments[0] && routeMap[segments[0]]) {
+            segments[0] = routeMap[segments[0]];
+            apiPath = segments.join('/');
+        }
+
+        // Correction automatique des chemins si nécessaire
+        // Exemple: /api/admin/meters/123 -> /a/meters/123
+        // Mais si le front utilise meters/{id_meter}, on s'assure que ça match le backend
 
         // Construire l'URL complète vers le backend
         const backendUrl = `${API_BASE_URL}/a/${apiPath}${url.search}`;
+
+        console.log(`[Proxy] ${method} ${url.pathname} -> ${backendUrl}`);
 
         // Préparer les options de la requête
         const options: RequestInit = {
@@ -42,6 +67,10 @@ async function proxyRequest(request: NextRequest, method: string) {
 
         // Faire la requête vers le backend
         const response = await fetch(backendUrl, options);
+
+        if (!response.ok) {
+            console.error(`[Proxy Error] Backend returned ${response.status} for ${backendUrl}`);
+        }
 
         // Récupérer le contenu de la réponse
         const contentType = response.headers.get('content-type');
